@@ -692,7 +692,7 @@ local function autoReexecute()
     if player then
         player.OnTeleport:Connect(function()
             task.wait(2)
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/your-raw-url/ffl_tfb_alpha.lua"))()
+            loadstring(game:HttpGet("https://github.com/itsblaze7/FireFlasklab-tfb-alpha/blob/main/FFL_TFB_ALPHA.lua"))()
         end)
     end
 end

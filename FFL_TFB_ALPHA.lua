@@ -1,6 +1,6 @@
 --// [FFL TFB ALPHA] V1 - SOCCER: TOUCH FOOTBALL EXPLOIT
 --// MADE BY ITS_BLAZE7 - AGGRESSIVE HACKER EDITION
---// OPTIMIZED, LAG-FREE, FULLY CUSTOMIZABLE
+--// FIXED: LAG, TOGGLES, COLOR THEME, EDITABLE KEYBINDS, GOAL SELECTION
 
 print("                                         ")
 print(" █████▒▄▄▄█████▓ ▄▄▄▄    ▄▄▄        ██▓    ▓█████  ▒██   ██▒")
@@ -13,16 +13,16 @@ print(" ░          ░     ░▒   ▒   ▒   ▒▒ ░ ░ ░ ▒  ░ �
 print("░ ░       ░        ░   ░   ░   ▒      ░ ░      ░     ░    ░  ")
 print("                     ░         ░  ░     ░  ░   ░  ░   ░ ░    ")
 print("                                                          ")
-print("==========[ FFL TFB ALPHA ]==========")
+print("==========[ FFL TFB ALPHA (FIXED) ]==========")
 print("VERSION: V1 | EXPLOIT ACTIVE")
 print("MADE BY: ITS_BLAZE7")
 print("PASSWORD REQUIRED - UNLOCK THE POWER")
-print("=====================================")
+print("=============================================")
 
---// LOAD RAYFIELD LIBRARY
+-- // LOAD RAYFIELD LIBRARY
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
---// PERSISTENCE SYSTEM
+-- // PERSISTENCE SYSTEM
 local function saveScriptState()
     writefile("FFL_TFB_State.txt", game:GetService("HttpService"):JSONEncode(getgenv().Values))
 end
@@ -37,13 +37,14 @@ local function loadScriptState()
     return {}
 end
 
---// INITIALIZE GETGENV
+-- // INITIALIZE GETGENV WITH TOGGLES
 getgenv().Toggles = {
     Aimbot = false,
     Powershot = false,
     NoClip = false,
     Fly = false,
-    WalkSpeed = false
+    WalkSpeed = false,
+    JumpPower = false   -- NEW: separate toggle for jump height modification
 }
 
 getgenv().Keybinds = {
@@ -62,10 +63,10 @@ if not getgenv().Values.WalkSpeedVal then getgenv().Values.WalkSpeedVal = 16 end
 if not getgenv().Values.JumpHeightVal then getgenv().Values.JumpHeightVal = 50 end
 if not getgenv().Values.ExtraJumpsVal then getgenv().Values.ExtraJumpsVal = 0 end
 if not getgenv().Values.FlySpeedVal then getgenv().Values.FlySpeedVal = 50 end
-if not getgenv().Values.ShotPowerVal then getgenv().Values.ShotPowerVal = 250 end
-if not getgenv().Values.TargetGoal then getgenv().Values.TargetGoal = "OpponentGoal" end
+if not getgenv().Values.ShotPowerVal then getgenv().Values.ShotPowerVal = 1000 end  -- larger default
+if not getgenv().Values.TargetGoal then getgenv().Values.TargetGoal = "Opponent" end
 
---// VARIABLES
+-- // VARIABLES
 local Player = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("RunService")
@@ -75,10 +76,9 @@ local noclipState = false
 local originalProperties = {}
 local flyConnection = nil
 local heartbeatConnection = nil
-local currentGoal = nil
-local selectedGoalButton = nil
+local lastBallCheck = 0
 
---// BALL DETECTION FUNCTION
+-- // BETTER BALL DETECTION (optimized)
 local function findSoccerBall()
     for _, obj in ipairs(workspace:GetDescendants()) do
         if obj:IsA("BasePart") and (obj.Name:lower():find("ball") or obj.Name:lower():find("soccer")) then
@@ -88,45 +88,37 @@ local function findSoccerBall()
     return nil
 end
 
---// FIND GOALS
-local function findOpponentGoal()
+-- // GOAL DETECTION (supports both goals)
+local function findGoal(goalType)
+    -- goalType: "Opponent" or "My"
     for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and (obj.Name:lower():find("goal") and not obj.Name:lower():find("mygoal")) then
-            return obj
+        if obj:IsA("BasePart") and obj.Name:lower():find("goal") then
+            if goalType == "Opponent" and not obj.Name:lower():find("my") then
+                return obj
+            elseif goalType == "My" and obj.Name:lower():find("my") then
+                return obj
+            end
         end
+    end
+    -- fallback: return any goal
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name:lower():find("goal") then return obj end
     end
     return nil
 end
 
-local function findMyGoal()
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("BasePart") and (obj.Name:lower():find("mygoal")) then
-            return obj
-        end
-    end
-    return nil
-end
-
---// AIMBOT LOGIC - SHOOTS TOWARD SELECTED GOAL
+-- // AIMBOT SHOOT FUNCTION
 local function aimbotShoot(ball)
     if not getgenv().Toggles.Aimbot then return end
-    
-    local targetGoal
-    if getgenv().Values.TargetGoal == "OpponentGoal" then
-        targetGoal = findOpponentGoal()
-    else
-        targetGoal = findMyGoal()
-    end
-    
-    if ball and targetGoal then
-        local direction = (targetGoal.Position - ball.Position).unit
-        local power = getgenv().Toggles.Powershot and getgenv().Values.ShotPowerVal or 75
-        ball:ApplyImpulse(direction * power)
-        Rayfield:Notify({Title = "⚽ AIMBOT", Content = "BLASTED TOWARD " .. getgenv().Values.TargetGoal:upper(), Duration = 1})
-    end
+    local targetGoal = findGoal(getgenv().Values.TargetGoal)
+    if not ball or not targetGoal then return end
+    local direction = (targetGoal.Position - ball.Position).unit
+    local power = getgenv().Toggles.Powershot and getgenv().Values.ShotPowerVal or 75
+    ball:ApplyImpulse(direction * power)
+    Rayfield:Notify({Title = "⚽ AIMBOT", Content = "BLASTED TOWARD " .. getgenv().Values.TargetGoal .. " GOAL!", Duration = 1})
 end
 
---// FLY SYSTEM
+-- // FLY SYSTEM (same as before, but no lag)
 local function startFly()
     if flying then return end
     flying = true
@@ -138,9 +130,9 @@ local function startFly()
     
     hum.PlatformStand = true
     if flyConnection then flyConnection:Disconnect() end
-    flyConnection = RS.RenderStepped:Connect(function(deltaTime)
-        if not flying or not hrp or not hum then
-            if flyConnection then flyConnection:Disconnect() end
+    flyConnection = RS.RenderStepped:Connect(function()
+        if not flying or not hrp or not hrp.Parent then
+            stopFly()
             return
         end
         local speed = getgenv().Values.FlySpeedVal
@@ -166,7 +158,7 @@ local function stopFly()
     end
 end
 
---// NO CLIP
+-- // NO CLIP
 local function setNoClip(state)
     noclipState = state
     local char = Player.Character
@@ -188,7 +180,7 @@ local function setNoClip(state)
     end
 end
 
---// CUSTOM PASSWORD UI
+-- // CUSTOM PASSWORD UI
 local function showPasswordUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "FFL_PasswordUI"
@@ -196,8 +188,8 @@ local function showPasswordUI()
     screenGui.Parent = game:GetService("CoreGui")
     
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 350, 0, 220)
-    frame.Position = UDim2.new(0.5, -175, 0.5, -110)
+    frame.Size = UDim2.new(0, 350, 0, 200)
+    frame.Position = UDim2.new(0.5, -175, 0.5, -100)
     frame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
     frame.BorderSizePixel = 0
     frame.ClipsDescendants = true
@@ -231,7 +223,7 @@ local function showPasswordUI()
     
     local enterBtn = Instance.new("TextButton")
     enterBtn.Size = UDim2.new(0.35, 0, 0, 40)
-    enterBtn.Position = UDim2.new(0.55, 0, 0.65, 0)
+    enterBtn.Position = UDim2.new(0.1, 0, 0.65, 0)
     enterBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
     enterBtn.Text = "▶ ENTER"
     enterBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -241,7 +233,7 @@ local function showPasswordUI()
     
     local getKeyBtn = Instance.new("TextButton")
     getKeyBtn.Size = UDim2.new(0.35, 0, 0, 40)
-    getKeyBtn.Position = UDim2.new(0.1, 0, 0.65, 0)
+    getKeyBtn.Position = UDim2.new(0.55, 0, 0.65, 0)
     getKeyBtn.BackgroundColor3 = Color3.fromRGB(255, 165, 0)
     getKeyBtn.Text = "🔑 GET KEY"
     getKeyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -278,50 +270,16 @@ local function showPasswordUI()
     end)
 end
 
---// OPTIMIZED RUNSERVICE LOOP
-local function setupMainLoop()
-    if heartbeatConnection then heartbeatConnection:Disconnect() end
-    local lastBallCheck = 0
-    heartbeatConnection = RS.Heartbeat:Connect(function(deltaTime)
-        local char = Player.Character
-        if not char then return end
-        
-        -- WALKSPEED (only if toggled)
-        if getgenv().Toggles.WalkSpeed and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = getgenv().Values.WalkSpeedVal
-        elseif char:FindFirstChild("Humanoid") and not getgenv().Toggles.WalkSpeed then
-            char.Humanoid.WalkSpeed = 16
-        end
-        
-        -- JUMP POWER (only if toggled)
-        if char:FindFirstChild("Humanoid") then
-            char.Humanoid.JumpPower = getgenv().Values.JumpHeightVal
-        end
-        
-        -- BALL DETECTION AND AIMBOT (throttled)
-        lastBallCheck = lastBallCheck + deltaTime
-        if lastBallCheck > 0.1 then
-            lastBallCheck = 0
-            local ball = findSoccerBall()
-            if ball and getgenv().Toggles.Aimbot then
-                local hrp = char:FindFirstChild("HumanoidRootPart")
-                if hrp and (hrp.Position - ball.Position).magnitude < 8 then
-                    aimbotShoot(ball)
-                end
-            end
-        end
-    end)
-end
-
---// MAIN UI FUNCTION
+-- // MAIN UI FUNCTION (with orange/black/dark red theme, editable keybinds, goal selection, text box for shot power)
 function loadMainUI()
+    -- Apply custom theme colors (Orange, Black, Dark Red)
+    -- Rayfield doesn't support full custom theming, but we can set button colors manually
     local Window = Rayfield:CreateWindow({
         Name = "⚽ [FFL TFB ALPHA] V1",
         Icon = 0,
         LoadingTitle = "LOADING HACKS",
         LoadingSubtitle = "PREPARING DOMINATION",
-        Theme = "Default",
-        ToggleUIKeybind = "K",
+        Theme = "Default",  -- We'll override element colors
         ConfigurationSaving = {
             Enabled = true,
             FolderName = "FFL_TFB",
@@ -329,147 +287,155 @@ function loadMainUI()
         }
     })
     
-    -- Apply custom theme colors (Orange, Black, Dark Red)
-    local customTheme = {
-        Background = Color3.fromRGB(25, 25, 35),
-        Accent = Color3.fromRGB(255, 85, 0),
-        Secondary = Color3.fromRGB(139, 0, 0),
-        Text = Color3.fromRGB(255, 255, 255)
-    }
-    -- Note: Rayfield doesn't directly support custom themes, but we can modify UI elements
-    -- after creation. For now, we'll use Default and rely on element colors.
-    
-    --// TAB 1: MAIN
+    -- // TAB 1: MAIN
     local mainTab = Window:CreateTab("⚽ MAIN", nil)
+    local aimSection = mainTab:CreateSection("AIMBOT")
     
-    -- Customizable Keybind Section
-    local keybindSection = mainTab:CreateSection("⚡ HOTKEY SETTINGS")
+    -- Editable keybind inputs
+    local keybindSection = mainTab:CreateSection("⚡ CUSTOM HOTKEYS")
     
-    -- Keybind Inputs
-    local aimbotKeybind = mainTab:CreateInput({
-        Name = "Aimbot Keybind",
-        PlaceholderText = "Key (e.g., B)",
+    local aimbotKeyInput = mainTab:CreateInput({
+        Name = "Aimbot Key",
+        PlaceholderText = "Single letter",
         CurrentValue = getgenv().Keybinds.Aimbot,
-        Flag = "AimbotKey",
-        Callback = function(Value)
-            if #Value == 1 then
-                getgenv().Keybinds.Aimbot = Value:upper()
+        Callback = function(val)
+            if #val == 1 then
+                getgenv().Keybinds.Aimbot = val:upper()
                 saveScriptState()
-                Rayfield:Notify({Title = "KEYBIND UPDATED", Content = "Aimbot: "..Value:upper(), Duration = 1})
-            else
-                Rayfield:Notify({Title = "INVALID", Content = "Single character only", Duration = 1})
+                aimbotToggle:SetName("⚽ AIMBOT ["..getgenv().Keybinds.Aimbot.."]")
+                Rayfield:Notify({Title = "Keybind updated", Content = "Aimbot: "..val:upper()})
             end
         end
     })
     
-    local powershotKeybind = mainTab:CreateInput({
-        Name = "Powershot Keybind",
-        PlaceholderText = "Key (e.g., P)",
+    local powershotKeyInput = mainTab:CreateInput({
+        Name = "Powershot Key",
+        PlaceholderText = "Single letter",
         CurrentValue = getgenv().Keybinds.Powershot,
-        Flag = "PowershotKey",
-        Callback = function(Value)
-            if #Value == 1 then
-                getgenv().Keybinds.Powershot = Value:upper()
+        Callback = function(val)
+            if #val == 1 then
+                getgenv().Keybinds.Powershot = val:upper()
                 saveScriptState()
-                Rayfield:Notify({Title = "KEYBIND UPDATED", Content = "Powershot: "..Value:upper(), Duration = 1})
-            else
-                Rayfield:Notify({Title = "INVALID", Content = "Single character only", Duration = 1})
+                powershotToggle:SetName("💥 POWERSHOT ["..getgenv().Keybinds.Powershot.."]")
             end
         end
     })
     
-    local noclipKeybind = mainTab:CreateInput({
-        Name = "NoClip Keybind",
-        PlaceholderText = "Key (e.g., N)",
+    local noClipKeyInput = mainTab:CreateInput({
+        Name = "NoClip Key",
+        PlaceholderText = "Single letter",
         CurrentValue = getgenv().Keybinds.NoClip,
-        Flag = "NoClipKey",
-        Callback = function(Value)
-            if #Value == 1 then
-                getgenv().Keybinds.NoClip = Value:upper()
+        Callback = function(val)
+            if #val == 1 then
+                getgenv().Keybinds.NoClip = val:upper()
                 saveScriptState()
-                Rayfield:Notify({Title = "KEYBIND UPDATED", Content = "NoClip: "..Value:upper(), Duration = 1})
-            else
-                Rayfield:Notify({Title = "INVALID", Content = "Single character only", Duration = 1})
+                noClipToggle:SetName("🔓 NO CLIP ["..getgenv().Keybinds.NoClip.."]")
             end
         end
-    end
+    })
     
-    local flyKeybind = mainTab:CreateInput({
-        Name = "Fly Keybind",
-        PlaceholderText = "Key (e.g., G)",
+    local flyKeyInput = mainTab:CreateInput({
+        Name = "Fly Key",
+        PlaceholderText = "Single letter",
         CurrentValue = getgenv().Keybinds.Fly,
-        Flag = "FlyKey",
-        Callback = function(Value)
-            if #Value == 1 then
-                getgenv().Keybinds.Fly = Value:upper()
+        Callback = function(val)
+            if #val == 1 then
+                getgenv().Keybinds.Fly = val:upper()
                 saveScriptState()
-                Rayfield:Notify({Title = "KEYBIND UPDATED", Content = "Fly: "..Value:upper(), Duration = 1})
-            else
-                Rayfield:Notify({Title = "INVALID", Content = "Single character only", Duration = 1})
+                flyToggle:SetName("✈️ CFrame FLY ["..getgenv().Keybinds.Fly.."]")
             end
         end
-    end
+    })
     
-    local aimSection = mainTab:CreateSection("⚽ AIMBOT")
+    local teleportKeyInput = mainTab:CreateInput({
+        Name = "Teleport to Ball Key",
+        PlaceholderText = "Single letter",
+        CurrentValue = getgenv().Keybinds.TeleportBall,
+        Callback = function(val)
+            if #val == 1 then
+                getgenv().Keybinds.TeleportBall = val:upper()
+                saveScriptState()
+                teleportBtn:SetName("📍 TELEPORT TO BALL ["..getgenv().Keybinds.TeleportBall.."]")
+            end
+        end
+    })
     
+    local bringKeyInput = mainTab:CreateInput({
+        Name = "Bring Ball Key",
+        PlaceholderText = "Single letter",
+        CurrentValue = getgenv().Keybinds.BringBall,
+        Callback = function(val)
+            if #val == 1 then
+                getgenv().Keybinds.BringBall = val:upper()
+                saveScriptState()
+                bringBtn:SetName("🔄 BRING BALL TO ME ["..getgenv().Keybinds.BringBall.."]")
+            end
+        end
+    })
+    
+    local extraJumpsKeyInput = mainTab:CreateInput({
+        Name = "Extra Jumps Key",
+        PlaceholderText = "Single letter",
+        CurrentValue = getgenv().Keybinds.ExtraJumps,
+        Callback = function(val)
+            if #val == 1 then
+                getgenv().Keybinds.ExtraJumps = val:upper()
+                saveScriptState()
+                extraJumpsSlider:SetName("✨ EXTRA JUMPS POWER ["..getgenv().Keybinds.ExtraJumps.."]")
+            end
+        end
+    })
+    
+    -- Aimbot toggles
     local aimbotToggle = mainTab:CreateToggle({
-        Name = "Aimbot ["..getgenv().Keybinds.Aimbot.."]",
+        Name = "⚽ AIMBOT ["..getgenv().Keybinds.Aimbot.."]",
         CurrentValue = getgenv().Toggles.Aimbot,
         Flag = "AimbotToggle",
         Callback = function(Value)
             getgenv().Toggles.Aimbot = Value
-            aimbotToggle:SetName("Aimbot ["..getgenv().Keybinds.Aimbot.."]")
             Rayfield:Notify({Title = "AIMBOT", Content = Value and "ACTIVE ⚡" or "OFF ❌", Duration = 1})
         end
     })
     
     local powershotToggle = mainTab:CreateToggle({
-        Name = "Powershot ["..getgenv().Keybinds.Powershot.."]",
+        Name = "💥 POWERSHOT ["..getgenv().Keybinds.Powershot.."]",
         CurrentValue = getgenv().Toggles.Powershot,
         Flag = "PowershotToggle",
         Callback = function(Value)
             getgenv().Toggles.Powershot = Value
-            powershotToggle:SetName("Powershot ["..getgenv().Keybinds.Powershot.."]")
             Rayfield:Notify({Title = "POWERSHOT", Content = Value and "MAX POWER 💥" or "OFF ❌", Duration = 1})
         end
     })
     
+    -- Shot Power: TEXT BOX instead of slider, with larger limit (1 - 5000)
     local powerInput = mainTab:CreateInput({
-        Name = "💪 SHOT POWER",
-        PlaceholderText = "Enter power (50-500)",
+        Name = "💪 SHOT POWER (1-5000)",
+        PlaceholderText = "Enter power",
         CurrentValue = tostring(getgenv().Values.ShotPowerVal),
         Flag = "ShotPower",
         Callback = function(Value)
             local num = tonumber(Value)
-            if num and num >= 50 and num <= 500 then
+            if num and num >= 1 and num <= 5000 then
                 getgenv().Values.ShotPowerVal = num
                 saveScriptState()
                 Rayfield:Notify({Title = "SHOT POWER", Content = "Set to "..num, Duration = 1})
             else
-                Rayfield:Notify({Title = "INVALID", Content = "Use 50-500", Duration = 1})
+                Rayfield:Notify({Title = "INVALID", Content = "Use 1-5000", Duration = 1})
             end
         end
     })
     
-    -- Goal Selection Section
-    local goalSection = mainTab:CreateSection("🎯 GOAL SELECTION")
-    
-    local function highlightGoalButton(button, isSelected)
-        if isSelected then
-            button:SetBackgroundColor(Color3.fromRGB(255, 85, 0))
-        else
-            button:SetBackgroundColor(Color3.fromRGB(40, 40, 50))
-        end
-    end
+    -- Goal selection buttons (highlight orange when selected)
+    local goalSection = mainTab:CreateSection("🎯 TARGET GOAL")
     
     local opponentGoalBtn = mainTab:CreateButton({
         Name = "🎯 OPPONENT GOAL",
         Callback = function()
-            getgenv().Values.TargetGoal = "OpponentGoal"
+            getgenv().Values.TargetGoal = "Opponent"
             saveScriptState()
-            highlightGoalButton(opponentGoalBtn, true)
-            highlightGoalButton(myGoalBtn, false)
-            Rayfield:Notify({Title = "GOAL SET", Content = "Targeting opponent goal", Duration = 1})
+            opponentGoalBtn:SetBackgroundColor(Color3.fromRGB(255, 85, 0))
+            myGoalBtn:SetBackgroundColor(Color3.fromRGB(40, 40, 50))
+            Rayfield:Notify({Title = "GOAL SET", Content = "Targeting opponent goal"})
         end
     })
     opponentGoalBtn:SetBackgroundColor(Color3.fromRGB(255, 85, 0))
@@ -477,22 +443,25 @@ function loadMainUI()
     local myGoalBtn = mainTab:CreateButton({
         Name = "🏠 MY GOAL",
         Callback = function()
-            getgenv().Values.TargetGoal = "MyGoal"
+            getgenv().Values.TargetGoal = "My"
             saveScriptState()
-            highlightGoalButton(myGoalBtn, true)
-            highlightGoalButton(opponentGoalBtn, false)
-            Rayfield:Notify({Title = "GOAL SET", Content = "Targeting my goal", Duration = 1})
+            myGoalBtn:SetBackgroundColor(Color3.fromRGB(255, 85, 0))
+            opponentGoalBtn:SetBackgroundColor(Color3.fromRGB(40, 40, 50))
+            Rayfield:Notify({Title = "GOAL SET", Content = "Targeting your own goal"})
         end
     })
     myGoalBtn:SetBackgroundColor(Color3.fromRGB(40, 40, 50))
     
-    if getgenv().Values.TargetGoal == "MyGoal" then
-        highlightGoalButton(myGoalBtn, true)
+    if getgenv().Values.TargetGoal == "My" then
+        myGoalBtn:SetBackgroundColor(Color3.fromRGB(255, 85, 0))
+        opponentGoalBtn:SetBackgroundColor(Color3.fromRGB(40, 40, 50))
     else
-        highlightGoalButton(opponentGoalBtn, true)
+        opponentGoalBtn:SetBackgroundColor(Color3.fromRGB(255, 85, 0))
+        myGoalBtn:SetBackgroundColor(Color3.fromRGB(40, 40, 50))
     end
     
-    local ballSection = mainTab:CreateSection("⚽ BALL CONTROL")
+    -- Ball control
+    local ballSection = mainTab:CreateSection("BALL CONTROL")
     
     local teleportBtn = mainTab:CreateButton({
         Name = "📍 TELEPORT TO BALL ["..getgenv().Keybinds.TeleportBall.."]",
@@ -516,6 +485,7 @@ function loadMainUI()
         end
     })
     
+    -- Status label
     local statusLabel = mainTab:CreateLabel("🔍 SEARCHING FOR BALL...")
     local function updateStatusLabel()
         local ball = findSoccerBall()
@@ -533,15 +503,16 @@ function loadMainUI()
         end
     end)
     
-    --// TAB 2: POWER UPS
+    -- // TAB 2: POWER UPS
     local powerTab = Window:CreateTab("⚡ POWER UPS", nil)
     
     local creditLabel = powerTab:CreateLabel("🔥 MADE BY [ITS_BLAZE7] 🔥")
+    creditLabel:SetTextColor(Color3.fromRGB(255, 85, 0))
     
-    local flySection = powerTab:CreateSection("✈️ FLIGHT")
+    local flySection = powerTab:CreateSection("FLIGHT")
     
     local flyToggle = powerTab:CreateToggle({
-        Name = "CFrame Fly ["..getgenv().Keybinds.Fly.."]",
+        Name = "✈️ CFrame FLY ["..getgenv().Keybinds.Fly.."]",
         CurrentValue = false,
         Flag = "FlyToggle",
         Callback = function(Value)
@@ -550,7 +521,6 @@ function loadMainUI()
             else
                 stopFly()
             end
-            flyToggle:SetName("CFrame Fly ["..getgenv().Keybinds.Fly.."]")
             Rayfield:Notify({Title = "FLY MODE", Content = Value and "ACTIVE ✈️" or "OFF ❌", Duration = 1})
         end
     })
@@ -568,14 +538,20 @@ function loadMainUI()
         end
     })
     
-    local speedSection = powerTab:CreateSection("🏃 MOVEMENT")
+    local speedSection = powerTab:CreateSection("MOVEMENT")
     
     local walkspeedToggle = powerTab:CreateToggle({
-        Name = "WalkSpeed Hack",
+        Name = "🏃 WALKSPEED HACK",
         CurrentValue = getgenv().Toggles.WalkSpeed,
         Flag = "WalkSpeedToggle",
         Callback = function(Value)
             getgenv().Toggles.WalkSpeed = Value
+            if not Value then
+                local char = Player.Character
+                if char and char:FindFirstChild("Humanoid") then
+                    char.Humanoid.WalkSpeed = 16
+                end
+            end
             Rayfield:Notify({Title = "WALKSPEED", Content = Value and "ENABLED 🏃" or "DISABLED ❌", Duration = 1})
         end
     })
@@ -589,14 +565,37 @@ function loadMainUI()
         Flag = "WalkSpeed",
         Callback = function(Value)
             getgenv().Values.WalkSpeedVal = Value
+            if getgenv().Toggles.WalkSpeed then
+                local char = Player.Character
+                if char and char:FindFirstChild("Humanoid") then
+                    char.Humanoid.WalkSpeed = Value
+                end
+            end
             saveScriptState()
         end
     })
     
-    local jumpSection = powerTab:CreateSection("🦘 JUMP")
+    local jumpSection = powerTab:CreateSection("JUMP")
+    
+    -- NEW: Jump power toggle (so it doesn't auto-apply)
+    local jumpToggle = powerTab:CreateToggle({
+        Name = "🦘 CUSTOM JUMP HEIGHT",
+        CurrentValue = getgenv().Toggles.JumpPower,
+        Flag = "JumpToggle",
+        Callback = function(Value)
+            getgenv().Toggles.JumpPower = Value
+            if not Value then
+                local char = Player.Character
+                if char and char:FindFirstChild("Humanoid") then
+                    char.Humanoid.JumpPower = 50
+                end
+            end
+            Rayfield:Notify({Title = "JUMP HEIGHT", Content = Value and "CUSTOM ENABLED" or "DISABLED (default 50)", Duration = 1})
+        end
+    })
     
     local jumpHeightSlider = powerTab:CreateSlider({
-        Name = "Jump Height",
+        Name = "🦘 JUMP HEIGHT VALUE",
         Range = {30, 500},
         Increment = 10,
         Suffix = "Power",
@@ -604,12 +603,18 @@ function loadMainUI()
         Flag = "JumpHeight",
         Callback = function(Value)
             getgenv().Values.JumpHeightVal = Value
+            if getgenv().Toggles.JumpPower then
+                local char = Player.Character
+                if char and char:FindFirstChild("Humanoid") then
+                    char.Humanoid.JumpPower = Value
+                end
+            end
             saveScriptState()
         end
     })
     
     local extraJumpsSlider = powerTab:CreateSlider({
-        Name = "Extra Jumps Power ["..getgenv().Keybinds.ExtraJumps.."]",
+        Name = "✨ EXTRA JUMPS POWER ["..getgenv().Keybinds.ExtraJumps.."]",
         Range = {0, 50},
         Increment = 1,
         Suffix = "Extra Jumps",
@@ -622,46 +627,40 @@ function loadMainUI()
     })
     
     local noClipToggle = powerTab:CreateToggle({
-        Name = "No Clip ["..getgenv().Keybinds.NoClip.."]",
+        Name = "🔓 NO CLIP ["..getgenv().Keybinds.NoClip.."]",
         CurrentValue = getgenv().Toggles.NoClip,
         Flag = "NoClipToggle",
         Callback = function(Value)
             getgenv().Toggles.NoClip = Value
             setNoClip(Value)
-            noClipToggle:SetName("No Clip ["..getgenv().Keybinds.NoClip.."]")
             Rayfield:Notify({Title = "NOCLIP", Content = Value and "ACTIVE 🔓" or "OFF 🔒", Duration = 1})
         end
     })
     
-    --// SUPPORT BUTTON
+    -- // SUPPORT BUTTON
     local supportSection = powerTab:CreateSection("🆘 SUPPORT")
     local supportBtn = powerTab:CreateButton({
-        Name = "🆘 NEED HELP? JOIN DISCORD",
+        Name = "📋 JOIN DISCORD FOR HELP",
         Callback = function()
             setclipboard("https://discord.gg/nJ6P8VVSCm")
-            Rayfield:Notify({Title = "DISCORD LINK COPIED", Content = "Join for support", Duration = 2})
+            Rayfield:Notify({Title = "DISCORD LINK", Content = "Copied to clipboard!", Duration = 2})
         end
     })
     supportBtn:SetBackgroundColor(Color3.fromRGB(255, 85, 0))
     
-    --// KEYBINDS WITH CUSTOMIZABLE KEYS
+    -- // KEYBINDS (using custom keybinds)
     UIS.InputBegan:Connect(function(input, gameProcessed)
         if gameProcessed then return end
-        
         local key = input.KeyCode.Name
         
         if key == getgenv().Keybinds.Aimbot then
             aimbotToggle:Set(not aimbotToggle.CurrentValue)
-            aimbotToggle:SetName("Aimbot ["..getgenv().Keybinds.Aimbot.."]")
         elseif key == getgenv().Keybinds.Powershot then
             powershotToggle:Set(not powershotToggle.CurrentValue)
-            powershotToggle:SetName("Powershot ["..getgenv().Keybinds.Powershot.."]")
         elseif key == getgenv().Keybinds.NoClip then
             noClipToggle:Set(not noClipToggle.CurrentValue)
-            noClipToggle:SetName("No Clip ["..getgenv().Keybinds.NoClip.."]")
         elseif key == getgenv().Keybinds.Fly then
             flyToggle:Set(not flyToggle.CurrentValue)
-            flyToggle:SetName("CFrame Fly ["..getgenv().Keybinds.Fly.."]")
         elseif key == getgenv().Keybinds.ExtraJumps then
             local char = Player.Character
             if char and char:FindFirstChild("Humanoid") then
@@ -678,25 +677,62 @@ function loadMainUI()
         end
     end)
     
-    -- Start the optimized main loop
-    setupMainLoop()
+    -- // OPTIMIZED MAIN LOOP (Heartbeat instead of RenderStepped to reduce lag)
+    RS.Heartbeat:Connect(function(deltaTime)
+        local char = Player.Character
+        if not char then return end
+        
+        -- WalkSpeed (only if toggled)
+        if getgenv().Toggles.WalkSpeed then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then
+                hum.WalkSpeed = getgenv().Values.WalkSpeedVal
+            end
+        end
+        
+        -- JumpPower (only if toggled)
+        if getgenv().Toggles.JumpPower then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum then
+                hum.JumpPower = getgenv().Values.JumpHeightVal
+            end
+        end
+        
+        -- Aimbot touch detection (throttled)
+        lastBallCheck = lastBallCheck + deltaTime
+        if lastBallCheck > 0.1 then
+            lastBallCheck = 0
+            if getgenv().Toggles.Aimbot then
+                local ball = findSoccerBall()
+                if ball then
+                    local hrp = char:FindFirstChild("HumanoidRootPart")
+                    if hrp and (hrp.Position - ball.Position).magnitude < 8 then
+                        aimbotShoot(ball)
+                    end
+                end
+            end
+        end
+    end)
     
-    -- NOTIFY HOTKEYS
-    local hotkeyMsg = "["..getgenv().Keybinds.Aimbot.."] Aimbot | ["..getgenv().Keybinds.Powershot.."] Powershot | ["..getgenv().Keybinds.NoClip.."] NoClip | ["..getgenv().Keybinds.Fly.."] Fly"
-    Rayfield:Notify({Title = "🔥 FFL TFB ALPHA UNLOCKED 🔥", Content = hotkeyMsg, Duration = 8})
+    -- // NOTIFY HOTKEYS
+    Rayfield:Notify({Title = "⚡ FFL TFB ALPHA UNLOCKED ⚡", 
+        Content = "All features toggled OFF by default. Enable what you need. Edit hotkeys in UI.", 
+        Duration = 8})
 end
 
---// AUTO-REEXECUTE ON TELEPORT
+-- // AUTO-REEXECUTE ON TELEPORT (fix raw URL)
 local function autoReexecute()
     local player = game.Players.LocalPlayer
     if player then
         player.OnTeleport:Connect(function()
             task.wait(2)
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/itsblaze7/FireFlasklab-tfb-alpha/refs/heads/main/FFL_TFB_ALPHA.lua"))()
+            -- Replace with your actual raw URL
+           loadstring(game:HttpGet("https://raw.githubusercontent.com/itsblaze7/FireFlasklab-tfb-alpha/refs/heads/main/FFL_TFB_ALPHA.lua"))()
         end)
     end
 end
 autoReexecute()
 
---// START PASSWORD UI
+-- // START PASSWORD UI
+task.wait(1)  -- small delay to ensure stability
 showPasswordUI()
